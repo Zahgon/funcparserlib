@@ -109,7 +109,7 @@ class Token:
 
     @property
     def name(self) -> str:
-        return self.value
+        pass
 
     def pformat(self) -> str:
         return "%s %s '%s'" % (
