@@ -124,8 +124,10 @@ class Parser(Generic[_A, _B]):
         ],
     ) -> None:
         """Wrap the parser function `p` into a `Parser` object."""
-        self.name = ""
-        self.define(p)
+        def ignored(tokens, s):
+            raise NotImplementedError
+
+        raise NotImplementedError
 
     def named(self, name: str) -> "Parser[_A, _B]":
         # noinspection GrazieInspection
@@ -165,8 +167,7 @@ class Parser(Generic[_A, _B]):
 
             The way to enable the parsing log may be changed in future versions.
         """
-        self.name = name
-        return self
+        raise NotImplementedError
 
     def define(
         self,
@@ -184,14 +185,7 @@ class Parser(Generic[_A, _B]):
 
         See the examples in the docs for `forward_decl()`.
         """
-        f = getattr(p, "run", p)
-        if debug:
-            setattr(self, "_run", f)
-        else:
-            setattr(self, "run", f)
-        name = getattr(p, "name", p.__doc__)
-        if name is not None:
-            self.named(name)
+        raise NotImplementedError
 
     def run(self, tokens: Sequence[_A], s: "State") -> Tuple[_B, "State"]:
         """Run the parser against the tokens with the specified parsing state.
@@ -210,9 +204,7 @@ class Parser(Generic[_A, _B]):
             `Parser.parse(tokens)` instead and let the parser object take care of
             updating the parsing state.
         """
-        if debug:
-            log.debug("trying %s" % self.name)
-        return self._run(tokens, s)
+        raise NotImplementedError
 
     def _run(self, tokens: Sequence[_A], s: "State") -> Tuple[_B, "State"]:
         raise NotImplementedError("you must define() a parser")
@@ -239,37 +231,27 @@ class Parser(Generic[_A, _B]):
             (as `Token` objects contain their position in the source file) and good
             separation of the lexical and syntactic levels of the grammar.
         """
-        try:
-            (tree, _) = self.run(tokens, State(0, 0, None))
-            return tree
-        except NoParseError as e:
-            max = e.state.max
-            if len(tokens) > max:
-                t = tokens[max]
-                if isinstance(t, Token):
-                    if t.start is None or t.end is None:
-                        loc = ""
-                    else:
-                        s_line, s_pos = t.start
-                        e_line, e_pos = t.end
-                        loc = "%d,%d-%d,%d: " % (s_line, s_pos, e_line, e_pos)
-                    msg = "%s%s: %r" % (loc, e.msg, t.value)
-                elif isinstance(t, str):
-                    msg = "%s: %r" % (e.msg, t)
-                else:
-                    msg = "%s: %s" % (e.msg, t)
-            else:
-                msg = "got unexpected end of input"
-            e_parser = e.state.parser
-            if isinstance(e_parser, Parser):
-                msg = "%s, expected: %s" % (msg, e_parser.name)
-            e.msg = msg
-            raise
+        raise NotImplementedError
 
     @overload
     def __add__(  # type: ignore[misc]
         self, other: "_IgnoredParser[_A]"
     ) -> "Parser[_A, _B]":
+        def magic(v1, v2):
+            raise NotImplementedError
+
+        def _add(tokens, s):
+            raise NotImplementedError
+
+        def ignored_right(tokens, s):
+            raise NotImplementedError
+
+        def ip(tokens, s):
+            raise NotImplementedError
+
+        def p(tokens, s):
+            raise NotImplementedError
+
         pass
 
     @overload
@@ -330,23 +312,7 @@ class Parser(Generic[_A, _B]):
         ```
         """
 
-        def magic(v1: Any, v2: Any) -> _Tuple:
-            pass
-
-        @_TupleParser
-        def _add(tokens: Sequence[_A], s: State) -> Tuple[Tuple[_B, _C], State]:
-            pass
-
-        @Parser
-        def ignored_right(tokens: Sequence[_A], s: State) -> Tuple[_B, State]:
-            pass
-
-        name = "(%s, %s)" % (self.name, other.name)
-        if isinstance(other, _IgnoredParser):
-            return ignored_right.named(name)
-        else:
-            _add.name = name
-            return _add
+        raise NotImplementedError
 
     def __or__(self, other: "Parser[_A, _C]") -> "Parser[_A, Union[_B, _C]]":
         """Choice combination of parsers.
@@ -370,12 +336,10 @@ class Parser(Generic[_A, _B]):
         ```
         """
 
-        @Parser
-        def _or(tokens: Sequence[_A], s: State) -> Tuple[Union[_B, _C], State]:
-            pass
+        def _or(tokens, s):
+            raise NotImplementedError
 
-        _or.name = "%s or %s" % (self.name, other.name)
-        return _or
+        raise NotImplementedError
 
     def __rshift__(self, f: Callable[[_B], _C]) -> "Parser[_A, _C]":
         """Transform the parsing result by applying the specified function.
@@ -399,11 +363,10 @@ class Parser(Generic[_A, _B]):
         ```
         """
 
-        @Parser
-        def _shift(tokens: Sequence[_A], s: State) -> Tuple[_C, State]:
-            pass
+        def _shift(tokens, s):
+            raise NotImplementedError
 
-        return _shift.named(self.name)
+        raise NotImplementedError
 
     def bind(self, f: Callable[[_B], "Parser[_A, _C]"]) -> "Parser[_A, _C]":
         """Bind the parser to a monadic function that returns a new parser.
@@ -417,6 +380,9 @@ class Parser(Generic[_A, _B]):
             You can parse any context-free grammar without resorting to `bind`. Due
             to its poor performance please use it only when you really need it.
         """
+        def _bind(tokens, s):
+            raise NotImplementedError
+
         pass
 
     def __neg__(self) -> "_IgnoredParser[_A]":
@@ -483,7 +449,7 @@ class Parser(Generic[_A, _B]):
             `p1 + p2 + ... + pN`. The parsed value of `-p` is an **internal** `_Ignored`
             object, not intended for actual use.
         """
-        return _IgnoredParser(self)
+        raise NotImplementedError
 
 
 class State:
@@ -503,24 +469,21 @@ class State:
             None,
         ] = None,
     ) -> None:
-        self.pos = pos
-        self.max = max
-        self.parser = parser
+        raise NotImplementedError
 
     def __str__(self) -> str:
-        return str((self.pos, self.max))
+        raise NotImplementedError
 
     def __repr__(self) -> str:
-        return "State(%r, %r)" % (self.pos, self.max)
+        raise NotImplementedError
 
 
 class NoParseError(Exception):
     def __init__(self, msg: str, state: State) -> None:
-        self.msg = msg
-        self.state = state
+        raise NotImplementedError
 
     def __str__(self) -> str:
-        return self.msg
+        raise NotImplementedError
 
 
 class _Tuple(tuple):
@@ -539,29 +502,25 @@ class _TupleParser(Parser[_A, _B], Generic[_A, _B]):
     def __add__(
         self, other: Union["_IgnoredParser[_A]", Parser[_A, Any]]
     ) -> Union["_TupleParser[_A, _B]", Parser[_A, Any]]:
-        return super().__add__(other)
+        raise NotImplementedError
 
 
 class _Ignored:
     def __init__(self, value: Any) -> None:
-        self.value = value
+        raise NotImplementedError
 
     def __repr__(self) -> str:
-        return "_Ignored(%s)" % repr(self.value)
+        raise NotImplementedError
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, _Ignored) and self.value == other.value
+        raise NotImplementedError
 
 
 @Parser
 def finished(tokens: Sequence[Any], s: State) -> Tuple[None, State]:
     """A parser that throws an exception if there are any unparsed tokens left in the
     sequence."""
-    if s.pos >= len(tokens):
-        return None, s
-    else:
-        s2 = State(s.pos, s.max, finished if s.pos == s.max else s.parser)
-        raise NoParseError("got unexpected token", s2)
+    raise NotImplementedError
 
 
 finished.name = "end of input"
@@ -591,12 +550,10 @@ def many(p: Parser[_A, _B]) -> Parser[_A, List[_B]]:
     ```
     """
 
-    @Parser
-    def _many(tokens: Sequence[_A], s: State) -> Tuple[List[_B], State]:
-        pass
+    def _many(tokens, s):
+        raise NotImplementedError
 
-    _many.name = "{ %s }" % p.name
-    return _many
+    raise NotImplementedError
 
 
 def some(pred: Callable[[_A], bool]) -> Parser[_A, _A]:
@@ -627,12 +584,10 @@ def some(pred: Callable[[_A], bool]) -> Parser[_A, _A]:
         `make_tokenizer()` from `funcparserlib.lexer` to tokenize your text first.
     """
 
-    @Parser
-    def _some(tokens: Sequence[_A], s: State) -> Tuple[_A, State]:
-        pass
+    def _some(tokens, s):
+        raise NotImplementedError
 
-    _some.name = "some(...)"
-    return _some
+    raise NotImplementedError
 
 
 def a(value: _A) -> Parser[_A, _A]:
@@ -665,12 +620,10 @@ def a(value: _A) -> Parser[_A, _A]:
         objects contain their position in the source file) and good separation of the
         lexical and syntactic levels of the grammar.
     """
-    name = getattr(value, "name", value)
+    def eq_value(t):
+        raise NotImplementedError
 
-    def eq_value(t: _A) -> bool:
-        pass
-
-    return some(eq_value).named(repr(name))
+    raise NotImplementedError
 
 
 def tok(type: str, value: Optional[str] = None) -> Parser[Token, str]:
@@ -716,14 +669,10 @@ def tok(type: str, value: Optional[str] = None) -> Parser[Token, str]:
         of the lexical and syntactic levels of the grammar.
     """
 
-    def eq_type(t: Token) -> bool:
-        pass
+    def eq_type(t):
+        raise NotImplementedError
 
-    if value is not None:
-        p = a(Token(type, value))
-    else:
-        p = some(eq_type).named(type)
-    return (p >> (lambda t: t.value)).named(p.name)
+    raise NotImplementedError
 
 
 def pure(x: _A) -> Parser[Any, _A]:
@@ -737,12 +686,10 @@ def pure(x: _A) -> Parser[Any, _A]:
     Also known as `return` in Haskell.
     """
 
-    @Parser
-    def _pure(_: Sequence[Any], s: State) -> Tuple[_A, State]:
-        pass
+    def _pure(_, s):
+        raise NotImplementedError
 
-    _pure.name = "(pure %r)" % (x,)
-    return _pure
+    raise NotImplementedError
 
 
 def maybe(p: Parser[_A, _B]) -> Parser[_A, Optional[_B]]:
@@ -759,7 +706,7 @@ def maybe(p: Parser[_A, _B]) -> Parser[_A, Optional[_B]]:
 
     ```
     """
-    return (p | pure(None)).named("[ %s ]" % (p.name,))
+    raise NotImplementedError
 
 
 def skip(p: Parser[_A, Any]) -> "_IgnoredParser[_A]":
@@ -778,16 +725,7 @@ class _IgnoredParser(Parser[_A, Any]):
             Callable[[Sequence[_A], "State"], Tuple[Any, "State"]],
         ],
     ) -> None:
-        super(_IgnoredParser, self).__init__(p)
-        run = self._run if debug else self.run
-
-        def ignored(tokens: Sequence[_A], s: State) -> Tuple[Any, State]:
-            pass
-
-        self.define(ignored)
-        name = getattr(p, "name", p.__doc__)
-        if name is not None:
-            self.name = name
+        raise NotImplementedError
 
     @overload  # type: ignore[override]
     def __add__(self, other: "_IgnoredParser[_A]") -> "_IgnoredParser[_A]":
@@ -800,22 +738,7 @@ class _IgnoredParser(Parser[_A, Any]):
     def __add__(
         self, other: Union["_IgnoredParser[_A]", Parser[_A, _C]]
     ) -> Union["_IgnoredParser[_A]", Parser[_A, _C]]:
-        if isinstance(other, _IgnoredParser):
-
-            @_IgnoredParser
-            def ip(tokens: Sequence[_A], s: State) -> Tuple[Any, State]:
-                pass
-
-            ip.name = "(%s, %s)" % (self.name, other.name)
-            return ip
-        else:
-
-            @Parser
-            def p(tokens: Sequence[_A], s: State) -> Tuple[_C, State]:
-                pass
-
-            p.name = "(%s, %s)" % (self.name, other.name)
-            return p
+        raise NotImplementedError
 
 
 def oneplus(p: Parser[_A, _B]) -> Parser[_A, List[_B]]:
@@ -840,15 +763,16 @@ def oneplus(p: Parser[_A, _B]) -> Parser[_A, List[_B]]:
     ```
     """
 
-    @Parser
-    def _oneplus(tokens: Sequence[_A], s: State) -> Tuple[List[_B], State]:
-        pass
+    def _oneplus(tokens, s):
+        raise NotImplementedError
 
-    _oneplus.name = "(%s, { %s })" % (p.name, p.name)
-    return _oneplus
+    raise NotImplementedError
 
 
 def with_forward_decls(suspension: Callable[[], Parser[_A, _B]]) -> Parser[_A, _B]:
+    def f(tokens, s):
+        raise NotImplementedError
+
     pass
 
 
@@ -887,12 +811,10 @@ def forward_decl() -> Parser[Any, Any]:
         ```
     """
 
-    @Parser
-    def f(_tokens: Any, _s: Any) -> Any:
-        raise NotImplementedError("you must define() a forward_decl somewhere")
+    def f(_tokens, _s):
+        raise NotImplementedError
 
-    f.name = "forward_decl()"
-    return f
+    raise NotImplementedError
 
 
 if __name__ == "__main__":

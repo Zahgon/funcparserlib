@@ -55,22 +55,7 @@ def pretty_tree(
 
     ```
     """
-    (MID, END, CONT, LAST, ROOT) = ("|-- ", "`-- ", "|   ", "    ", "")
+    def rec(obj, indent, sym):
+        raise NotImplementedError
 
-    def rec(obj: _A, indent: str, sym: str) -> str:
-        line = indent + sym + show(obj)
-        obj_kids = kids(obj)
-        if len(obj_kids) == 0:
-            return line
-        else:
-            if sym == MID:
-                next_indent = indent + CONT
-            elif sym == ROOT:
-                next_indent = indent + ROOT
-            else:
-                next_indent = indent + LAST
-            chars = [MID] * (len(obj_kids) - 1) + [END]
-            lines = [rec(kid, next_indent, sym) for kid, sym in zip(obj_kids, chars)]
-            return "\n".join([line] + lines)
-
-    return rec(x, "", ROOT)
+    raise NotImplementedError
